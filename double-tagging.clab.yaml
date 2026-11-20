@@ -1,0 +1,65 @@
+name: "double-tagging"
+
+topology:
+  nodes:
+    switch1:
+      kind: linux
+      image: registry.example.com/challenges/double-tagging/switch:latest
+      image-pull-policy: Never
+      network-mode: none
+      env:
+        SWITCH_ROLE: "1"
+
+    switch2:
+      kind: linux
+      image: registry.example.com/challenges/double-tagging/switch:latest
+      image-pull-policy: Never
+      network-mode: none
+      env:
+        SWITCH_ROLE: "2"
+
+    router:
+      kind: linux
+      image: registry.example.com/challenges/double-tagging/router:latest
+      image-pull-policy: Never
+      network-mode: none
+      sysctls:
+        net.ipv4.ip_forward: 1
+        net.ipv4.conf.all.rp_filter: 0
+        net.ipv4.conf.default.rp_filter: 0
+
+    victim-client:
+      kind: linux
+      image: registry.example.com/challenges/double-tagging/victim-client:latest
+      image-pull-policy: Never
+      network-mode: none
+      sysctls:
+        net.ipv4.conf.all.rp_filter: 0
+        net.ipv4.conf.default.rp_filter: 0
+      binds:
+        - /app/flag.txt:/flag.txt
+
+    attacker-client:
+      kind: linux
+      image: registry.example.com/templates/kali:v1
+      image-pull-policy: Never
+      ports:
+        - 2222:2222
+      env:
+        USER_NAME: ${SSH_USER}
+        USER_PASSWORD: ${SSH_PASSWORD}
+        NETWORK_IP: 192.168.0.137/24
+      sysctls:
+        net.ipv4.conf.all.rp_filter: 0
+        net.ipv4.conf.default.rp_filter: 0
+      exec:
+        - ip link set eth1 up
+        - ip addr replace 192.168.0.137/24 dev eth1
+        - ip route replace 192.168.20.0/24 via 192.168.0.1 dev eth1
+
+  links:
+    - endpoints: ["attacker-client:eth1", "switch1:eth1"]
+    - endpoints: ["switch1:eth2", "switch2:eth1"]
+    - endpoints: ["switch2:eth2", "victim-client:eth1"]
+    - endpoints: ["router:eth1", "switch1:eth3"]
+    - endpoints: ["router:eth2", "switch2:eth3"]

